@@ -27,6 +27,8 @@ import argparse
 from imutils.video import FPS
 import pandas as pd
 
+import torch
+
 # own modules
 import utills, plot
 from FairMOT.src.lib.opts import opts
@@ -44,6 +46,20 @@ maxDistance = 30  # alit
 
 mouse_pts = []
 
+
+def letterbox(img, height=608, width=1088,
+              color=(127.5, 127.5, 127.5)):  # resize a rectangular image to a padded rectangular
+    shape = img.shape[:2]  # shape = [height, width]
+    ratio = min(float(height) / shape[0], float(width) / shape[1])
+    new_shape = (round(shape[1] * ratio), round(shape[0] * ratio))  # new_shape = [width, height]
+    dw = (width - new_shape[0]) / 2  # width padding
+    dh = (height - new_shape[1]) / 2  # height padding
+    top, bottom = round(dh - 0.1), round(dh + 0.1)
+    left, right = round(dw - 0.1), round(dw + 0.1)
+    img = cv2.resize(img, new_shape, interpolation=cv2.INTER_AREA)  # resized, no border
+    img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # padded rectangular
+    return img, ratio, dw, dh
+
 # Function to get points for Region of Interest(ROI) and distance scale. It will take 8 points on first frame using mouse click
 # event.First four points will define ROI where we want to moniter social distancing. Also these points should form parallel  
 # lines in real world if seen from above(birds eye view). Next 3 points will define 6 feet(unit length) distance in     
@@ -51,7 +67,7 @@ mouse_pts = []
 # Points should pe in pre-defined order - bottom-left, bottom-right, top-right, top-left, point 5 and 6 should form     
 # horizontal line and point 5 and 7 should form verticle line. Horizontal and vertical scale will be different. 
 
-# Function will be called on mouse events                                                          
+# Function will be called on mouse events
 
 def get_mouse_points(event, x, y, flags, param):
     global mouse_pts
@@ -77,7 +93,9 @@ def get_mouse_points(event, x, y, flags, param):
         # print(mouse_pts)
 
 
-def calculate_social_distancing(opt, net, output_dir, output_vid, ln1, detection_rate):
+def calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate, net):
+    use_cuda = opt.gpus!=[-1]
+
     count = 0
     vs = cv2.VideoCapture(opt.video_path)
 
@@ -85,9 +103,13 @@ def calculate_social_distancing(opt, net, output_dir, output_vid, ln1, detection
     height = int(vs.get(cv2.CAP_PROP_FRAME_HEIGHT))
     width = int(vs.get(cv2.CAP_PROP_FRAME_WIDTH))
     fps_ = int(vs.get(cv2.CAP_PROP_FPS))
+    frame_rate = int(round(fps_))
+
+    # fairMOT
+    MOT_tracker = JDETracker(opt, frame_rate=frame_rate)
 
     if detection_rate < 1:
-        detection_rate = int(fps_)
+        detection_rate = frame_rate
 
     # Set scale for birds eye view
     # Bird's eye view will only show ROI
@@ -118,6 +140,19 @@ def calculate_social_distancing(opt, net, output_dir, output_vid, ln1, detection
         print("Frame {} - {} ms".format(count, vs.get(cv2.CAP_PROP_POS_MSEC)))
 
         (grabbed, frame) = vs.read()
+        (H, W) = frame.shape[:2]
+
+        mot_w, mot_h = 1920, 1080
+        mot_frame0 = cv2.resize(frame, (mot_w, mot_h))
+
+        # Padded resize
+        img_size = (1088, 608)
+        mot_frame, _, _, _ = letterbox(mot_frame0, height=img_size[1], width=img_size[0])
+
+        # Normalize RGB
+        mot_frame = mot_frame[:, :, ::-1].transpose(2, 0, 1)
+        mot_frame = np.ascontiguousarray(mot_frame, dtype=np.float32)
+        mot_frame /= 255.0
 
         if not grabbed:
             break
@@ -130,8 +165,6 @@ def calculate_social_distancing(opt, net, output_dir, output_vid, ln1, detection
         ids = []
         boxes1 = []
         speeds = []
-
-        (H, W) = frame.shape[:2]
 
         # first frame will be used to draw ROI and horizontal and vertical 180 cm distance(unit length in both directions)
         if count == 0:
@@ -172,6 +205,13 @@ def calculate_social_distancing(opt, net, output_dir, output_vid, ln1, detection
 
         ####################################################################################
 
+        if use_cuda:
+            blob = torch.from_numpy(mot_frame).cuda().unsqueeze(0)
+        else:
+            blob = torch.from_numpy(mot_frame).unsqueeze(0)
+
+        online_targets = MOT_tracker.update(blob, mot_frame0)
+
         if count % detection_rate == 0:
 
             trackableObjects = {}
@@ -181,6 +221,8 @@ def calculate_social_distancing(opt, net, output_dir, output_vid, ln1, detection
             net.setInput(blob)
             start = time.time()
             layerOutputs = net.forward(ln1)
+
+
             end = time.time()
             boxes = []
             # benches = []
@@ -441,4 +483,4 @@ if __name__ == "__main__":
     cv2.setMouseCallback("image", get_mouse_points)
     np.random.seed(42)
 
-    calculate_social_distancing(opt, net_yl, output_dir, output_vid, ln1, detection_rate)
+    calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate, net_yl)
