@@ -1,3 +1,6 @@
+import sys
+sys.path.append("./FairMOT/src/lib")
+
 import numpy as np
 from numba import jit
 from collections import deque

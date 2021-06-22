@@ -18,6 +18,8 @@ __email__ = "ali.saberi96@gmail.com"
 __python_version__ = "3.5.2"
 
 # imports
+import os
+
 import cv2
 import numpy as np
 import time
@@ -27,8 +29,13 @@ import pandas as pd
 
 # own modules
 import utills, plot
+from FairMOT.src.lib.opts import opts
 from objects import Object  # alit
 from pyimagesearch.centroidtracker import CentroidTracker
+
+# FairMOT
+from FairMOT.src.lib.tracker.multitracker import JDETracker
+
 
 confid = 0.3
 thresh = 0.5
@@ -36,7 +43,6 @@ maxDisappeared = 5  # alit
 maxDistance = 30  # alit
 
 mouse_pts = []
-
 
 # Function to get points for Region of Interest(ROI) and distance scale. It will take 8 points on first frame using mouse click
 # event.First four points will define ROI where we want to moniter social distancing. Also these points should form parallel  
@@ -71,9 +77,9 @@ def get_mouse_points(event, x, y, flags, param):
         # print(mouse_pts)
 
 
-def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1, detection_rate):
+def calculate_social_distancing(opt, net, output_dir, output_vid, ln1, detection_rate):
     count = 0
-    vs = cv2.VideoCapture(vid_path)
+    vs = cv2.VideoCapture(opt.video_path)
 
     # Get video height, width and fps
     height = int(vs.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -401,47 +407,24 @@ def calculate_social_distancing(vid_path, net, output_dir, output_vid, ln1, dete
 
 if __name__ == "__main__":
 
-    # Receives arguements specified by user
-    parser = argparse.ArgumentParser()
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
-    parser.add_argument('-v', '--video_path', action='store', dest='video_path', default='./data/example1.mp4',
-                        help='Path for input video')
+    opt = opts().init()
 
-    parser.add_argument('-o', '--output_dir', action='store', dest='output_dir', default='./output/',
-                        help='Path for Output images')
-
-    parser.add_argument('-O', '--output_vid', action='store', dest='output_vid', default='./output_vid/',
-                        help='Path for Output videos')
-
-    parser.add_argument('-m', '--model', action='store', dest='model', default='./models/',
-                        help='Path for models directory')
-
-    # alit
-    parser.add_argument('-r', '--detection_rate', action='store', dest='detection_rate', default='0',
-                        help='Object detection frame rate')
-
-    parser.add_argument('-s', '--speed_rate', action='store', dest='speed_rate', default='1',
-                        help='Speed estimation frame rate')
-
-    parser.add_argument('-u', '--uop', action='store', dest='uop', default='NO',
-                        help='Use open pose or not (YES/NO)')
-
-    values = parser.parse_args()
-
-    model_path = values.model
+    model_path = opt.model
     if model_path[len(model_path) - 1] != '/':
         model_path = model_path + '/'
 
-    output_dir = values.output_dir
+    output_dir = opt.output_dir
     if output_dir[len(output_dir) - 1] != '/':
         output_dir = output_dir + '/'
 
-    output_vid = values.output_vid
+    output_vid = opt.output_vid
     if output_vid[len(output_vid) - 1] != '/':
         output_vid = output_vid + '/'
 
-    detection_rate = int(values.detection_rate)  # alit
-    speed_rate = int(values.speed_rate)
+    detection_rate = int(opt.detection_rate)  # alit
+    speed_rate = int(opt.speed_rate)
 
     # load Yolov3 weights
 
@@ -458,4 +441,4 @@ if __name__ == "__main__":
     cv2.setMouseCallback("image", get_mouse_points)
     np.random.seed(42)
 
-    calculate_social_distancing(values.video_path, net_yl, output_dir, output_vid, ln1, detection_rate)
+    calculate_social_distancing(opt, net_yl, output_dir, output_vid, ln1, detection_rate)

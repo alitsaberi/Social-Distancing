@@ -9,6 +9,28 @@ import sys
 class opts(object):
   def __init__(self):
     self.parser = argparse.ArgumentParser()
+
+    # non FairMOT settings
+    self.parser.add_argument('-v', '--video_path', action='store', dest='video_path', default='./data/example1.mp4',
+                        help='Path for input video')
+
+    self.parser.add_argument('-o', '--output_dir', action='store', dest='output_dir', default='./output/',
+                        help='Path for Output images')
+
+    self.parser.add_argument('-O', '--output_vid', action='store', dest='output_vid', default='./output_vid/',
+                        help='Path for Output videos')
+
+    self.parser.add_argument('-m', '--model', action='store', dest='model', default='./models/',
+                        help='Path for models directory')
+
+    # alit
+    self.parser.add_argument('-r', '--detection_rate', action='store', dest='detection_rate', type=int, default=0,
+                        help='Object detection frame rate')
+
+    self.parser.add_argument('-s', '--speed_rate', action='store', dest='speed_rate', type=int, default=1,
+                        help='Speed estimation frame rate')
+
+
     # basic experiment setting
     self.parser.add_argument('task', default='mot', help='mot')
     self.parser.add_argument('--dataset', default='jde', help='jde')
