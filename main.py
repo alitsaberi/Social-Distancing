@@ -38,7 +38,6 @@ from pyimagesearch.centroidtracker import CentroidTracker
 # FairMOT
 from FairMOT.src.lib.tracker.multitracker import JDETracker
 
-
 confid = 0.3
 thresh = 0.5
 maxDisappeared = 5  # alit
@@ -59,6 +58,7 @@ def letterbox(img, height=608, width=1088,
     img = cv2.resize(img, new_shape, interpolation=cv2.INTER_AREA)  # resized, no border
     img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # padded rectangular
     return img, ratio, dw, dh
+
 
 # Function to get points for Region of Interest(ROI) and distance scale. It will take 8 points on first frame using mouse click
 # event.First four points will define ROI where we want to moniter social distancing. Also these points should form parallel  
@@ -94,7 +94,7 @@ def get_mouse_points(event, x, y, flags, param):
 
 
 def calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate, net):
-    use_cuda = opt.gpus!=[-1]
+    use_cuda = opt.gpus != [-1]
 
     count = 0
     vs = cv2.VideoCapture(opt.video_path)
@@ -111,9 +111,11 @@ def calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate
     if detection_rate < 1:
         detection_rate = frame_rate
 
+    mot_w, mot_h = 1920, 1080
+
     # Set scale for birds eye view
     # Bird's eye view will only show ROI
-    scale_w, scale_h = utills.get_scale(width, height)
+    scale_w, scale_h = utills.get_scale(mot_w, mot_h)
 
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     output_movie = cv2.VideoWriter("./output_vid/distancing.avi", fourcc, fps_, (int(width), int(height + 210)))
@@ -122,8 +124,8 @@ def calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate
 
     # alit    
     # ct = CentroidTracker(maxDisappeared=maxDisappeared, maxDistance=maxDistance)
-    final_tracking_time = 0
-    final_tracking_points = []
+    # final_tracking_time = 0
+    # final_tracking_points = []
     trackableObjects = {}
 
     fps = FPS().start()  # alit
@@ -142,7 +144,6 @@ def calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate
         (grabbed, frame) = vs.read()
         (H, W) = frame.shape[:2]
 
-        mot_w, mot_h = 1920, 1080
         mot_frame0 = cv2.resize(frame, (mot_w, mot_h))
 
         # Padded resize
@@ -169,7 +170,7 @@ def calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate
         # first frame will be used to draw ROI and horizontal and vertical 180 cm distance(unit length in both directions)
         if count == 0:
             while True:
-                image = frame
+                image = mot_frame0
                 cv2.imshow("image", image)
                 if cv2.waitKey(1) & 0xFF == ord('s'):
                     cv2.destroyWindow("image")
@@ -178,30 +179,31 @@ def calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate
             points = mouse_pts
 
             # Using first 4 points or coordinates for perspective transformation. The region marked by these 4 points are
-        # considered ROI. This polygon shaped ROI is then warped into a rectangle which becomes the bird eye view. 
-        # This bird eye view then has the property property that points are distributed uniformally horizontally and 
-        # vertically(scale for horizontal and vertical direction will be different). So for bird eye view points are 
-        # equally distributed, which was not case for normal view.
-        src = np.float32(np.array(points[:4]))
-        dst = np.float32([[0, H], [W, H], [W, 0], [0, 0]])
-        prespective_transform = cv2.getPerspectiveTransform(src, dst)
+            # considered ROI. This polygon shaped ROI is then warped into a rectangle which becomes the bird eye view.
+            # This bird eye view then has the property property that points are distributed uniformally horizontally and
+            # vertically(scale for horizontal and vertical direction will be different). So for bird eye view points are
+            # equally distributed, which was not case for normal view.
+            src = np.float32(np.array(points[:4]))
+            dst = np.float32([[0, mot_h], [mot_w, mot_h], [mot_w, 0], [0, 0]])
+            prespective_transform = cv2.getPerspectiveTransform(src, dst)
 
-        # using next 3 points for horizontal and vertical unit length(in this case 180 cm)
-        pts = np.float32(np.array([points[4:7]]))
-        warped_pt = cv2.perspectiveTransform(pts, prespective_transform)[0]
+            # using next 3 points for horizontal and vertical unit length(in this case 180 cm)
+            pts = np.float32(np.array([points[4:7]]))
+            warped_pt = cv2.perspectiveTransform(pts, prespective_transform)[0]
 
-        bpts = np.float32(np.array([points[7:]]))
-        bench_points = cv2.perspectiveTransform(bpts, prespective_transform)[0]
-        bpts = list(bpts[0])
+            bpts = np.float32(np.array([points[7:]]))
+            bench_points = cv2.perspectiveTransform(bpts, prespective_transform)[0]
+            bpts = list(bpts[0])
 
-        # since bird eye view has property that all points are equidistant in horizontal and vertical direction.
-        # distance_w and distance_h will give us 180 cm distance in both horizontal and vertical directions
-        # (how many pixels will be there in 180cm length in horizontal and vertical direction of birds eye view),
-        # which we can use to calculate distance between two humans in transformed view or bird eye view
-        distance_w = np.sqrt((warped_pt[0][0] - warped_pt[1][0]) ** 2 + (warped_pt[0][1] - warped_pt[1][1]) ** 2)
-        distance_h = np.sqrt((warped_pt[0][0] - warped_pt[2][0]) ** 2 + (warped_pt[0][1] - warped_pt[2][1]) ** 2)
-        pnts = np.array(points[:4], np.int32)
-        cv2.polylines(frame, [pnts], True, (70, 70, 70), thickness=2)
+            # since bird eye view has property that all points are equidistant in horizontal and vertical direction.
+            # distance_w and distance_h will give us 180 cm distance in both horizontal and vertical directions
+            # (how many pixels will be there in 180cm length in horizontal and vertical direction of birds eye view),
+            # which we can use to calculate distance between two humans in transformed view or bird eye view
+            distance_w = np.sqrt((warped_pt[0][0] - warped_pt[1][0]) ** 2 + (warped_pt[0][1] - warped_pt[1][1]) ** 2)
+            distance_h = np.sqrt((warped_pt[0][0] - warped_pt[2][0]) ** 2 + (warped_pt[0][1] - warped_pt[2][1]) ** 2)
+            pnts = np.array(points[:4], np.int32)
+
+        cv2.polylines(mot_frame0, [pnts], True, (70, 70, 70), thickness=2)
 
         ####################################################################################
 
@@ -212,144 +214,168 @@ def calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate
 
         online_targets = MOT_tracker.update(blob, mot_frame0)
 
-        if count % detection_rate == 0:
+        for t in online_targets:
+            tlwh = [int(c) for c in t.tlwh]
+            tid = t.track_id
+            vertical = tlwh[2] / tlwh[3] > 1.6
+            if tlwh[2] * tlwh[3] > opt.min_box_area and not vertical:
+                boxes1.append(tlwh)
+                ids.append(tid)
 
-            trackableObjects = {}
+                if tid not in trackableObjects.keys():
+                    trackableObjects[tid] = Object(tid, None)
 
-            # YOLO v3
-            blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416), swapRB=True, crop=False)
-            net.setInput(blob)
-            start = time.time()
-            layerOutputs = net.forward(ln1)
+        person_points = utills.get_transformed_points(boxes1, prespective_transform)
+        # ids = trackableObjects.keys()
 
+        for i, oid in enumerate(ids):
+            to = trackableObjects.get(oid, None)
+            to.points.append(person_points[i])
+            to.times.append(frame_time)
 
-            end = time.time()
-            boxes = []
-            # benches = []
-            # benches1 = []
-            confidences = []
-            # bench_confs = []
-            classIDs = []
+            if count % speed_rate == 0:
+                to.cal_speed(distance_w, distance_h, 5, 2)
 
-            for output in layerOutputs:
-                for detection in output:
-                    scores = detection[5:]
-                    classID = np.argmax(scores)
-                    confidence = scores[classID]
-                    # detecting humans in frame
-                    if classID == 0:
+            speeds.append(to.speed)
+            # print('speed', to.speed)
 
-                        if confidence > confid:
-                            box = detection[0:4] * np.array([W, H, W, H])
-                            (centerX, centerY, width, height) = box.astype("int")
-
-                            x = int(centerX - (width / 2))
-                            y = int(centerY - (height / 2))
-
-                            boxes.append([x, y, int(width), int(height)])
-                            confidences.append(float(confidence))
-                            classIDs.append(classID)
-
-                    # bench    
-                    # if classID == 13:
-
-                    #     if confidence > confid:
-
-                    #        bench = detection[0:4] * np.array([W, H, W, H])
-                    #        (centerX, centerY, width, height) = bench.astype("int")
-
-                    #        x = int(centerX - (width / 2))
-                    #        y = int(centerY - (height / 2))
-
-                    #        benches.append([x, y, int(width), int(height)])
-                    #        bench_confs.append(float(confidence))
-                    #        classIDs.append(classID)
-
-            idxs = cv2.dnn.NMSBoxes(boxes, confidences, confid, thresh)
-            # bench_idxs = cv2.dnn.NMSBoxes(benches, bench_confs, confid, thresh)
-
-            # font = cv2.FONT_HERSHEY_PLAIN
-
-            for i in range(len(boxes)):
-                if i in idxs:
-                    boxes1.append(boxes[i])
-                    x, y, w, h = [int(v) for v in boxes[i]]  # alit
-
-                    # alit
-                    tracker = cv2.TrackerCSRT_create()
-                    tracker.init(frame, tuple([int(v) for v in boxes[i]]))
-
-                    rects.append((x, y, x + w, y + h))
-
-                    trackableObjects[oid_counter] = Object(oid_counter, tracker)
-
-                    oid_counter += 1
-
-            # for i in range(len(benches)):
-            #     if i in bench_idxs:
-            #         benches1.append(benches[i])
-
-            # bench_points = utills.get_transformed_points(benches1, prespective_transform)
-
-            ct = CentroidTracker(maxDisappeared=maxDisappeared, maxDistance=maxDistance)
-            person_points = utills.get_transformed_points(boxes1, prespective_transform)
-            objects = ct.update(person_points)
-            objects = ct.update(final_tracking_points)
-
-            ids = trackableObjects.keys()
-
-            for i, oid in enumerate(ids):
-                to = trackableObjects.get(oid, None)
-                to.points.append(objects[i])
-                to.points.append(person_points[i])
-                to.times.append(final_tracking_time)
-                to.times.append(frame_time)
-
-                if count % speed_rate == 0:
-                    to.cal_speed(distance_w, distance_h, 5, 2)
-
-                speeds.append(to.speed)
-                # print('speed', to.speed)
-
-
-        else:
-
-            for to in trackableObjects.values():
-
-                (success, box) = to.tracker.update(rgb)
-
-                box = [int(v) for v in box]
-                boxes1.append(box)
-
-                if success:
-                    (x, y, w, h) = box
-                    rects.append((x, y, x + w, y + h))
-
-            person_points = utills.get_transformed_points(boxes1, prespective_transform)
-
-            ids = trackableObjects.keys()
-
-            for i, oid in enumerate(ids):
-                to = trackableObjects.get(oid, None)
-                to.points.append(person_points[i])
-                to.times.append(frame_time)
-
-                if count % speed_rate == 0:
-                    to.cal_speed(distance_w, distance_h, 5, 2)
-
-                speeds.append(to.speed)
-                # print('speed', to.speed)
+        # if count % detection_rate == 0:
+        #
+        #     trackableObjects = {}
+        #
+        #     # YOLO v3
+        #     blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416), swapRB=True, crop=False)
+        #     net.setInput(blob)
+        #     start = time.time()
+        #     layerOutputs = net.forward(ln1)
+        #
+        #     end = time.time()
+        #     boxes = []
+        #     # benches = []
+        #     # benches1 = []
+        #     confidences = []
+        #     # bench_confs = []
+        #     classIDs = []
+        #
+        #     for output in layerOutputs:
+        #         for detection in output:
+        #             scores = detection[5:]
+        #             classID = np.argmax(scores)
+        #             confidence = scores[classID]
+        #             # detecting humans in frame
+        #             if classID == 0:
+        #
+        #                 if confidence > confid:
+        #                     box = detection[0:4] * np.array([W, H, W, H])
+        #                     (centerX, centerY, width, height) = box.astype("int")
+        #
+        #                     x = int(centerX - (width / 2))
+        #                     y = int(centerY - (height / 2))
+        #
+        #                     boxes.append([x, y, int(width), int(height)])
+        #                     confidences.append(float(confidence))
+        #                     classIDs.append(classID)
+        #
+        #             # bench
+        #             # if classID == 13:
+        #
+        #             #     if confidence > confid:
+        #
+        #             #        bench = detection[0:4] * np.array([W, H, W, H])
+        #             #        (centerX, centerY, width, height) = bench.astype("int")
+        #
+        #             #        x = int(centerX - (width / 2))
+        #             #        y = int(centerY - (height / 2))
+        #
+        #             #        benches.append([x, y, int(width), int(height)])
+        #             #        bench_confs.append(float(confidence))
+        #             #        classIDs.append(classID)
+        #
+        #     idxs = cv2.dnn.NMSBoxes(boxes, confidences, confid, thresh)
+        #     # bench_idxs = cv2.dnn.NMSBoxes(benches, bench_confs, confid, thresh)
+        #
+        #     # font = cv2.FONT_HERSHEY_PLAIN
+        #
+        #     for i in range(len(boxes)):
+        #         if i in idxs:
+        #             boxes1.append(boxes[i])
+        #             x, y, w, h = [int(v) for v in boxes[i]]  # alit
+        #
+        #             # alit
+        #             tracker = cv2.TrackerCSRT_create()
+        #             tracker.init(frame, tuple([int(v) for v in boxes[i]]))
+        #
+        #             rects.append((x, y, x + w, y + h))
+        #
+        #             trackableObjects[oid_counter] = Object(oid_counter, tracker)
+        #
+        #             oid_counter += 1
+        #
+        #     # for i in range(len(benches)):
+        #     #     if i in bench_idxs:
+        #     #         benches1.append(benches[i])
+        #
+        #     # bench_points = utills.get_transformed_points(benches1, prespective_transform)
+        #
+        #     ct = CentroidTracker(maxDisappeared=maxDisappeared, maxDistance=maxDistance)
+        #     person_points = utills.get_transformed_points(boxes1, prespective_transform)
+        #     objects = ct.update(person_points)
+        #     objects = ct.update(final_tracking_points)
+        #
+        #     ids = trackableObjects.keys()
+        #
+        #     for i, oid in enumerate(ids):
+        #         to = trackableObjects.get(oid, None)
+        #         to.points.append(objects[i])
+        #         to.points.append(person_points[i])
+        #         to.times.append(final_tracking_time)
+        #         to.times.append(frame_time)
+        #
+        #         if count % speed_rate == 0:
+        #             to.cal_speed(distance_w, distance_h, 5, 2)
+        #
+        #         speeds.append(to.speed)
+        #         # print('speed', to.speed)
+        #
+        #
+        # else:
+        #
+        #     for to in trackableObjects.values():
+        #
+        #         (success, box) = to.tracker.update(rgb)
+        #
+        #         box = [int(v) for v in box]
+        #         boxes1.append(box)
+        #
+        #         if success:
+        #             (x, y, w, h) = box
+        #             rects.append((x, y, x + w, y + h))
+        #
+        #     person_points = utills.get_transformed_points(boxes1, prespective_transform)
+        #
+        #     ids = trackableObjects.keys()
+        #
+        #     for i, oid in enumerate(ids):
+        #         to = trackableObjects.get(oid, None)
+        #         to.points.append(person_points[i])
+        #         to.times.append(frame_time)
+        #
+        #         if count % speed_rate == 0:
+        #             to.cal_speed(distance_w, distance_h, 5, 2)
+        #
+        #         speeds.append(to.speed)
+        #         # print('speed', to.speed)
 
         fps.update()
         fps.stop()
 
-        if count % detection_rate == detection_rate - 1:
-            final_tracking_points = person_points
-            final_tracking_time = frame_time
+        # if count % detection_rate == detection_rate - 1:
+        #     final_tracking_points = person_points
+        #     final_tracking_time = frame_time
 
         # objects = ct.update(person_points)
 
-        ids = list(ids)
+        # ids = list(ids)
 
         distances_mat, bxs_mat = utills.get_distances(boxes1, person_points, ids, distance_w, distance_h)
         dis_to_bench_mat, bench_pts_mat, complete_bench_mat = utills.get_bench_distances(boxes1, person_points, bpts,
@@ -379,9 +405,9 @@ def calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate
 
             datas.append(data)
 
-        if len(rects) == 0:
-            count = count + 1
-            continue
+        # if len(rects) == 0:
+        #     count = count + 1
+        #     continue
 
         # alit
         # for (objectID, centroid) in objects.items():
@@ -402,13 +428,13 @@ def calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate
         # dis_to_bench_mat, bench_bxs_mat = utills.get_bench_distances(boxes1, person_points, benches1, bench_points, distance_w, distance_h)
         risk_count = utills.get_count(distances_mat)
 
-        frame1 = np.copy(frame)
+        # frame1 = np.copy(frame)
 
         # Draw bird eye view and frame with bouding boxes around humans according to risk factor    
-        bird_image = plot.bird_eye_view(frame, distances_mat, person_points, dis_to_bench_mat, bench_points, ids,
+        bird_image = plot.bird_eye_view(mot_frame0, distances_mat, person_points, dis_to_bench_mat, bench_points, ids,
                                         scale_w, scale_h, risk_count)
         # img = plot.social_distancing_view(frame1, bxs_mat, boxes1, bench_bxs_mat, benches1, speeds, risk_count)
-        img = plot.social_distancing_view(frame1, bxs_mat, boxes1, bench_pts_mat, bpts, ids, speeds, risk_count, count,
+        img = plot.social_distancing_view(mot_frame0, bxs_mat, boxes1, bench_pts_mat, bpts, ids, speeds, risk_count, count,
                                           frame_time)
 
         # Show/write image and videos
