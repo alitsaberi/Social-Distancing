@@ -142,6 +142,10 @@ def calculate_social_distancing(opt, output_dir, output_vid, detection_rate):
         print("Frame {} - {} ms".format(count, vs.get(cv2.CAP_PROP_POS_MSEC)))
 
         (grabbed, frame) = vs.read()
+
+        if not grabbed:
+            break
+
         (H, W) = frame.shape[:2]
 
         mot_frame0 = cv2.resize(frame, (mot_w, mot_h))
