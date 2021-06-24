@@ -93,7 +93,7 @@ def get_mouse_points(event, x, y, flags, param):
         # print(mouse_pts)
 
 
-def calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate, net):
+def calculate_social_distancing(opt, output_dir, output_vid, detection_rate):
     use_cuda = opt.gpus != [-1]
 
     count = 0
@@ -509,4 +509,4 @@ if __name__ == "__main__":
     cv2.setMouseCallback("image", get_mouse_points)
     np.random.seed(42)
 
-    calculate_social_distancing(opt, output_dir, output_vid, ln1, detection_rate, net_yl)
+    calculate_social_distancing(opt, output_dir, output_vid, detection_rate)
