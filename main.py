@@ -453,10 +453,14 @@ def calculate_social_distancing(opt, output_dir, output_vid):
             cv2.imwrite(output_dir + "bird_eye_view/frame%d.jpg" % count, bird_image)
 
             if count % opt.save_rate == 0:
+
+                print("--> Saving data file at frame {}".format(count))
                 # df = pd.DataFrame(datas)
                 # df.to_csv("social_distancing.csv", mode='a', header=False)
                 with open('social_distancing.json', 'a') as fout:
-                    json.dump(datas, fout)
+                    for dict in datas:
+                        json.dump(dict, fout)
+                        fout.write(os.linesep)
 
                 datas = []
 
@@ -480,7 +484,9 @@ def calculate_social_distancing(opt, output_dir, output_vid):
         keypress = ord('p')
 
     with open('social_distancing.json', 'a') as fout:
-        json.dump(datas, fout)
+        for dict in datas:
+            json.dump(dict, fout)
+            fout.write(os.linesep)
 
     print('==> Final data saved')
 
