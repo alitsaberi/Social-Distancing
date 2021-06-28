@@ -532,4 +532,6 @@ if __name__ == "__main__":
     cv2.setMouseCallback("image", get_mouse_points)
     np.random.seed(42)
 
+    open('social_distancing.json', 'w')
+
     calculate_social_distancing(opt, output_dir, output_vid)
