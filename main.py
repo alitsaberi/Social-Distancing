@@ -460,7 +460,6 @@ def calculate_social_distancing(opt, output_dir, output_vid):
                 with open('social_distancing.json', 'a') as fout:
                     for dict in datas:
                         json.dump(dict, fout)
-                        fout.write(os.linesep)
 
                 datas = []
 
@@ -486,7 +485,6 @@ def calculate_social_distancing(opt, output_dir, output_vid):
     with open('social_distancing.json', 'a') as fout:
         for dict in datas:
             json.dump(dict, fout)
-            fout.write(os.linesep)
 
     print('==> Final data saved')
 
