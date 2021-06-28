@@ -24,8 +24,8 @@ class opts(object):
                         help='Path for models directory')
 
     # alit
-    self.parser.add_argument('-r', '--detection_rate', action='store', dest='detection_rate', type=int, default=0,
-                        help='Object detection frame rate')
+    self.parser.add_argument('--save_rate', action='store', dest='save_rate', type=int, default=500,
+                        help='data file save rate')
 
     self.parser.add_argument('-s', '--speed_rate', action='store', dest='speed_rate', type=int, default=1,
                         help='Speed estimation frame rate')

@@ -18,6 +18,7 @@ __email__ = "ali.saberi96@gmail.com"
 __python_version__ = "3.5.2"
 
 # imports
+import json
 import os
 
 import cv2
@@ -93,7 +94,7 @@ def get_mouse_points(event, x, y, flags, param):
         # print(mouse_pts)
 
 
-def calculate_social_distancing(opt, output_dir, output_vid, detection_rate):
+def calculate_social_distancing(opt, output_dir, output_vid):
     use_cuda = opt.gpus != [-1]
 
     count = 0
@@ -108,8 +109,8 @@ def calculate_social_distancing(opt, output_dir, output_vid, detection_rate):
     # fairMOT
     MOT_tracker = JDETracker(opt, frame_rate=frame_rate)
 
-    if detection_rate < 1:
-        detection_rate = frame_rate
+    # if detection_rate < 1:
+    #     detection_rate = frame_rate
 
     mot_w, mot_h = 1920, 1080
 
@@ -237,7 +238,7 @@ def calculate_social_distancing(opt, output_dir, output_vid, detection_rate):
             to.points.append(person_points[i])
             to.times.append(frame_time)
 
-            if count % speed_rate == 0:
+            if count % opt.speed_rate == 0:
                 to.cal_speed(distance_w, distance_h, 5, 2)
 
             speeds.append(to.speed)
@@ -451,6 +452,14 @@ def calculate_social_distancing(opt, output_dir, output_vid, detection_rate):
             cv2.imwrite(output_dir + "frame%d.jpg" % count, img)
             cv2.imwrite(output_dir + "bird_eye_view/frame%d.jpg" % count, bird_image)
 
+            if count % opt.save_rate == 0:
+                # df = pd.DataFrame(datas)
+                # df.to_csv("social_distancing.csv", mode='a', header=False)
+                with open('social_distancing.json', 'a') as fout:
+                    json.dump(datas, fout)
+
+                datas = []
+
         count = count + 1
 
         # if count == 300:
@@ -470,8 +479,8 @@ def calculate_social_distancing(opt, output_dir, output_vid, detection_rate):
 
         keypress = ord('p')
 
-    df = pd.DataFrame(datas)
-    df.to_excel("social_distancing.xlsx")
+    with open('social_distancing.json', 'a') as fout:
+        json.dump(datas, fout)
 
     print('==> Final data saved')
 
@@ -499,8 +508,8 @@ if __name__ == "__main__":
     if output_vid[len(output_vid) - 1] != '/':
         output_vid = output_vid + '/'
 
-    detection_rate = int(opt.detection_rate)  # alit
-    speed_rate = int(opt.speed_rate)
+    # detection_rate = int(opt.detection_rate)  # alit
+    # speed_rate = int(opt.speed_rate)
 
     # load Yolov3 weights
 
@@ -517,4 +526,4 @@ if __name__ == "__main__":
     cv2.setMouseCallback("image", get_mouse_points)
     np.random.seed(42)
 
-    calculate_social_distancing(opt, output_dir, output_vid, detection_rate)
+    calculate_social_distancing(opt, output_dir, output_vid)
