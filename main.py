@@ -118,8 +118,8 @@ def calculate_social_distancing(opt, output_dir, output_vid, detection_rate):
     scale_w, scale_h = utills.get_scale(mot_w, mot_h)
 
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-    output_movie = cv2.VideoWriter("./output_vid/distancing.avi", fourcc, fps_, (int(width), int(height + 210)))
-    bird_movie = cv2.VideoWriter("./output_vid/bird_eye_view.avi", fourcc, fps_,
+    output_movie = cv2.VideoWriter("./output_vid/distancing.avi", fourcc, frame_rate, (int(mot_w), int(mot_h + 90)))
+    bird_movie = cv2.VideoWriter("./output_vid/bird_eye_view.avi", fourcc, frame_rate,
                                  (int(width * scale_w), int(height * scale_h)))
 
     # alit    
@@ -452,6 +452,10 @@ def calculate_social_distancing(opt, output_dir, output_vid, detection_rate):
             cv2.imwrite(output_dir + "bird_eye_view/frame%d.jpg" % count, bird_image)
 
         count = count + 1
+
+        # if count == 300:
+        #     break
+
 
         keypress = cv2.waitKey(50)
 
