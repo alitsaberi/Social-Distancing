@@ -135,7 +135,7 @@ def calculate_social_distancing(opt, output_dir, output_vid):
     global image
 
     datas = []
-    columns = set()
+    # columns = set()
 
     oid_counter = 0
 
@@ -411,7 +411,7 @@ def calculate_social_distancing(opt, output_dir, output_vid):
 
 
             datas.append(data)
-            columns.update(tuple(data))
+            # columns.update(tuple(data))
 
         # if len(rects) == 0:
         #     count = count + 1
@@ -491,25 +491,28 @@ def calculate_social_distancing(opt, output_dir, output_vid):
     #     for dict in datas:
     #         json.dump(dict, fout)
 
-    columns = list(columns)
+    # columns = list(columns)
+    #
+    # if len(datas) < opt.save_rate:
+    #     df = pd.DataFrame(datas)
+    #     df.to_csv('social_distancing.csv')
+    # else:
+    #     df = pd.DataFrame(columns=columns)
+    #     df.to_csv('social_distancing.csv')
+    #     for i in range(int(len(datas)/opt.save_rate)):
+    #         subset = datas[i*opt.save_rate:(i+1)*opt.save_rate]
+    #         df_temp = pd.DataFrame(columns=columns)
+    #         df_temp = df_temp.append(subset, ignore_index=True, sort=False)
+    #         df_temp.to_csv('social_distancing.csv', mode='a', header=False)
+    #
+    #     if (i+1) * opt.save_rate < len(datas):
+    #         subset = datas[(i+1) * opt.save_rate:]
+    #         df_temp = pd.DataFrame(columns=columns)
+    #         df_temp = df_temp.append(subset, ignore_index=True, sort=False)
+    #         df_temp.to_csv('social_distancing.csv', mode='a', header=False)
 
-    if len(datas) < opt.save_rate:
-        df = pd.DataFrame(datas)
-        df.to_csv('social_distancing.csv')
-    else:
-        df = pd.DataFrame(columns=columns)
-        df.to_csv('social_distancing.csv')
-        for i in range(int(len(datas)/opt.save_rate)):
-            subset = datas[i*opt.save_rate:(i+1)*opt.save_rate]
-            df_temp = pd.DataFrame(columns=columns)
-            df_temp = df_temp.append(subset, ignore_index=True, sort=False)
-            df_temp.to_csv('social_distancing.csv', mode='a', header=False)
-
-        if (i+1) * opt.save_rate < len(datas):
-            subset = datas[(i+1) * opt.save_rate:]
-            df_temp = pd.DataFrame(columns=columns)
-            df_temp = df_temp.append(subset, ignore_index=True, sort=False)
-            df_temp.to_csv('social_distancing.csv', mode='a', header=False)
+    df = pd.DataFrame(datas)
+    df.to_csv('social_distancing.csv')
 
     print('==> Final data saved')
 
