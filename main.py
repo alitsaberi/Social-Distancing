@@ -135,6 +135,7 @@ def calculate_social_distancing(opt, output_dir, output_vid):
     global image
 
     datas = []
+    columns = frozenset()
 
     oid_counter = 0
 
@@ -408,7 +409,9 @@ def calculate_social_distancing(opt, output_dir, output_vid):
 
                 data['Distance to P{}'.format(d[5])] = d[3]
 
+
             datas.append(data)
+            columns.add(tuple(data))
 
         # if len(rects) == 0:
         #     count = count + 1
@@ -488,21 +491,23 @@ def calculate_social_distancing(opt, output_dir, output_vid):
     #     for dict in datas:
     #         json.dump(dict, fout)
 
+    columns = list(columns)
+
     if len(datas) < opt.save_rate:
         df = pd.DataFrame(datas)
         df.to_csv('social_distancing.csv')
     else:
-        df = pd.DataFrame(columns=datas[-1].keys())
+        df = pd.DataFrame(columns=columns)
         df.to_csv('social_distancing.csv')
         for i in range(len(datas)/opt.save_rate):
             subset = datas[i*opt.save_rate:(i+1)*opt.save_rate]
-            df_temp = pd.DataFrame(columns=datas[-1].keys())
+            df_temp = pd.DataFrame(columns=columns)
             df_temp = df_temp.append(subset, ignore_index=True, sort=False)
             df_temp.to_csv('social_distancing.csv', mode='a', header=False)
 
         if (i+1) * opt.save_rate < len(datas):
             subset = datas[(i+1) * opt.save_rate:]
-            df_temp = pd.DataFrame(columns=datas[-1].keys())
+            df_temp = pd.DataFrame(columns=columns)
             df_temp = df_temp.append(subset, ignore_index=True, sort=False)
             df_temp.to_csv('social_distancing.csv', mode='a', header=False)
 
