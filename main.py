@@ -388,13 +388,16 @@ def calculate_social_distancing(opt, output_dir, output_vid):
                                                                                          bench_points, ids, distance_w,
                                                                                          distance_h)
 
+        dis_w = float((w / distance_w) * 180)
+        dis_h = float((h / distance_h) * 180)
+
         for i, oid in enumerate(ids):
             data = {}
             data['Frame No.'] = count
             data['Frame time'] = frame_time
             data['Person ID'] = oid
-            data['X'] = person_points[i][0]
-            data['Y'] = person_points[i][1]
+            data['X'] = float((person_points[i][0] / distance_w) * 180)
+            data['Y'] = float((person_points[i][1] / distance_h) * 180)
             data['Speed'] = speeds[i]
 
             for d in complete_bench_mat:
